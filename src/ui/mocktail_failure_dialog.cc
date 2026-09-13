@@ -224,8 +224,6 @@ int ShowDialog(std::string_view requested_message,
   return EXIT_SUCCESS;
 }
 
-// Invalid UTF-8 would be replaced by the crash text, which is misleading in
-// an informational dialog; an empty field is simply left out instead.
 std::string ValidOptionalText(std::string_view text) {
   if (text.empty() ||
       !g_utf8_validate(text.data(), static_cast<gssize>(text.size()),
@@ -246,8 +244,6 @@ GtkWidget* NoticeLabel(const std::string& text, const char* css_class,
   return label;
 }
 
-// Mocktail never updates its own files, so the dialog shows the command the
-// installation's owner (Flatpak, the package manager, the user) needs.
 int ShowUpdateNotice(std::string_view heading, std::string_view body,
                      std::string_view command, std::string_view alternative,
                      std::string_view alternative_command) {

@@ -64,7 +64,6 @@ std::string Catalog(const std::vector<std::uint64_t>& codes) {
   return "{\"schema_version\":1,\"profiles\":[" + profiles + "]}";
 }
 
-// Serves fixed bodies by URL and records every request it sees.
 struct FakeGitHub {
   std::map<std::string, std::string> bodies;
   std::vector<HttpTransferRequest> requests;
@@ -153,7 +152,6 @@ TEST(MocktailReleaseTest, RejectsUntrustedReleaseDocuments) {
   EXPECT_FALSE(ParseLatestReleaseDocument("[]", kRepository));
   EXPECT_FALSE(ParseLatestReleaseDocument(
       ReleaseDocument("1.0.5", kReleaseUrl, true), kRepository));
-  // The tag becomes part of a URL, so only version characters are accepted.
   EXPECT_FALSE(ParseLatestReleaseDocument(
       ReleaseDocument("../../other/repo/main"), kRepository));
   EXPECT_FALSE(
@@ -186,7 +184,6 @@ TEST(MocktailReleaseTest, FetchesReleaseAndItsRobloxCatalog) {
             std::vector<std::string>{"api.github.com"});
   EXPECT_EQ(github.requests[1].allowed_hosts,
             std::vector<std::string>{"raw.githubusercontent.com"});
-  // Launch waits for this check; it must not inherit the long APK timeouts.
   for (const HttpTransferRequest& request : github.requests) {
     EXPECT_EQ(request.maximum_attempts, 1);
     EXPECT_LE(request.transfer_timeout_ms, 10000);
@@ -233,7 +230,6 @@ TEST(MocktailReleaseTest, CachesChecksAndRetriesFailuresSooner) {
   EXPECT_TRUE(cached.latest->catalog_known);
   EXPECT_EQ(github.requests.size(), 2U);
 
-  // GitHub goes away: the previous answer survives and the retry comes early.
   github.bodies.clear();
   options.now += 2;
   const MocktailReleaseCheck failed = CheckMocktailRelease(options);
@@ -350,7 +346,6 @@ TEST(InstallMethodTest, AurPackagesUseTheAurHelper) {
   EXPECT_EQ(source.channel, InstallChannel::kPacman);
   EXPECT_EQ(source.package, "mocktail");
   EXPECT_EQ(source.update_command, "paru -Syu");
-  // The source package compiles every release; the prebuilt one does not.
   EXPECT_EQ(source.alternative_command, "paru -S mocktail-bin");
 
   TemporaryDirectory git;
@@ -441,11 +436,9 @@ TEST(UpdateNoticeTest, NothingToSayWhenCurrent) {
                   .empty());
   EXPECT_TRUE(
       ComposeUpdateNotice("1.0.4", std::nullopt, {}, FlatpakInstall()).empty());
-  // A nightly build ahead of the last release is not "outdated".
   EXPECT_TRUE(ComposeUpdateNotice("1.0.5", Release("1.0.4"), {},
                                   FlatpakInstall())
                   .empty());
-  // A failed download is not a rejection; it resolves on its own.
   RobloxUpdateState downloading = RejectedRoblox();
   downloading.latest_rejected = false;
   EXPECT_TRUE(ComposeUpdateNotice("1.0.4", Release("1.0.4"), downloading,
@@ -492,7 +485,6 @@ TEST(UpdateNoticeTest, WarnsOnceWhenNoReleaseRunsTheNewRoblox) {
   const UpdateNotice notice = ComposeUpdateNotice(
       "1.0.4", Release("1.0.4", {2998}), RejectedRoblox(), FlatpakInstall());
   EXPECT_EQ(notice.key, "roblox:3092:mocktail:1.0.4");
-  // Updating to a Mocktail that still cannot run it warns again.
   EXPECT_NE(ComposeUpdateNotice("1.0.5", Release("1.0.5"), RejectedRoblox(),
                                 FlatpakInstall())
                 .key,

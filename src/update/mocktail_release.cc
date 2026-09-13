@@ -10,7 +10,6 @@
 #include <cctype>
 #include <cerrno>
 #include <charconv>
-#include <limits>
 #include <nlohmann/json.hpp>
 #include <utility>
 
@@ -24,7 +23,6 @@ constexpr std::size_t kMaximumCatalogBytes = 4U * 1024U * 1024U;
 constexpr std::size_t kMaximumStateBytes = 256U * 1024U;
 constexpr std::size_t kMaximumSupportedCodes = 256;
 
-// Launch waits for this check, so it must give up quickly when offline.
 HttpTransferRequest QuickRequest(std::string url,
                                  std::vector<std::string> allowed_hosts,
                                  std::size_t maximum_bytes) {
@@ -336,9 +334,6 @@ MocktailReleaseResult FetchLatestMocktailRelease(std::string_view repository,
   result = ParseLatestReleaseDocument(document.bytes, repository);
   if (!result) return result;
 
-  // The tag was validated above, so it cannot change the URL's shape. The
-  // catalog is only read to word the notice; nothing from it is executed.
-  // Without it the notice still names the release, just not what it runs.
   const HttpBytesResult catalog = fetch(QuickRequest(
       "https://raw.githubusercontent.com/" + std::string(repository) + "/" +
           result.release.tag + "/config/roblox_compatibility.json",
@@ -421,8 +416,6 @@ UpdateNotice ComposeUpdateNotice(std::string_view installed_version,
   const std::string mocktail = "Mocktail " + std::string(installed_version);
   const std::string latest_roblox =
       RobloxLabel(roblox.latest_version_name, roblox.latest_version_code);
-  // A probation failure can also come from this computer (a driver, a
-  // missing runtime), so the text states what happened, not why.
   std::string blocked_sentence;
   if (roblox_blocked) {
     blocked_sentence = latest_roblox + " is out, but it did not pass " +
@@ -461,7 +454,6 @@ UpdateNotice ComposeUpdateNotice(std::string_view installed_version,
     return notice;
   }
 
-  // Includes this Mocktail: an update that still cannot run it says so again.
   notice.key = "roblox:" + std::to_string(roblox.latest_version_code) +
                ":mocktail:" + std::string(installed_version);
   notice.heading = "Roblox update pending";

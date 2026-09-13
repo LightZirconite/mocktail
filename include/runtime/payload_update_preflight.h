@@ -9,8 +9,6 @@
 namespace mocktail {
 namespace runtime {
 
-// A newer Mocktail release, or a Roblox version only a newer Mocktail can run,
-// as reported by the updater. The updater shows each situation once.
 struct MocktailUpdateNotice {
   std::string heading;
   std::string body;

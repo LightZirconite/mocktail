@@ -17,8 +17,6 @@ Fail() {
   exit 1
 }
 
-# Software centers and `flatpak info` show the newest metainfo release as the
-# installed version, so a release without an entry reports the previous one.
 python3 - "${ROOT}/CMakeLists.txt" \
     "${ROOT}/packaging/space.bigrat.mocktail.metainfo.xml" <<'PY'
 import re

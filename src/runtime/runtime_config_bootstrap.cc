@@ -156,10 +156,8 @@ updates:
   # Reserved for desktop update integrations. `mocktail_updater` itself never
   # launches another process after changing the active payload.
   launch_after_update: false
-  # Boolean (default: true): at most every 12 hours, ask GitHub whether a newer
-  # Mocktail release exists and whether it runs a Roblox version this one had
-  # to reject. Mocktail then says how your installation (Flatpak, AUR, APT,
-  # DNF, AppImage, ...) gets it; it never replaces its own files.
+  # Boolean (default: true): check GitHub for a newer Mocktail release and
+  # show how to update this installation.
   mocktail_release_check: true
 )yaml";
 

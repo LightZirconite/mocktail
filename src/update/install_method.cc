@@ -138,7 +138,6 @@ bool UnderPrefix(const std::filesystem::path& path, std::string_view prefix) {
   return text.rfind(prefix, 0) == 0;
 }
 
-// "26.04" -> 2604, "44" -> 4400. Anything unparsable is 0.
 int NumericVersion(std::string_view value) {
   int major = 0;
   int minor = 0;
@@ -158,9 +157,7 @@ bool IdLike(const InstallFacts& facts, std::string_view id) {
              facts.os_id_like.end();
 }
 
-// Only the systems the project publishes native packages for. Image-based
-// systems are excluded: their package changes do not survive an OS update,
-// so Flatpak is the right way to install Mocktail there.
+// Image-based systems lose native packages on OS updates; keep the Flatpak.
 void DescribeNativeAlternative(const InstallFacts& facts,
                                const std::string& project_url,
                                InstallMethod* method) {

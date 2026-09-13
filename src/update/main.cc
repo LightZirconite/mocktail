@@ -38,8 +38,6 @@
 #define MOCKTAIL_PROJECT_VERSION "unknown"
 #endif
 
-// OWNER/REPO whose GitHub releases are Mocktail's own; empty disables the
-// release check for builds that do not follow that repository.
 #ifndef MOCKTAIL_RELEASE_REPOSITORY
 #define MOCKTAIL_RELEASE_REPOSITORY ""
 #endif
@@ -223,7 +221,6 @@ mocktail::update::InstallMethod DescribeThisInstallation(
       latest.has_value() ? latest->url : ProjectUrl() + "/releases/latest");
 }
 
-// Each line becomes one stderr record; the launcher reassembles them.
 void EmitNoticeText(std::string_view field, std::string_view text) {
   std::size_t begin = 0;
   while (begin <= text.size()) {
@@ -237,9 +234,6 @@ void EmitNoticeText(std::string_view field, std::string_view text) {
   }
 }
 
-// Runs after the Roblox update so the notice can say whether a newer
-// Mocktail runs the Roblox version this one had to reject. Never fails the
-// launch: an offline machine simply learns nothing new.
 void ReportMocktailRelease(const mocktail::update::UpdatePaths& paths,
                            const mocktail::update::UpdateResult& updated) {
   if (ReleaseCheckDisabled()) return;
@@ -263,8 +257,6 @@ void ReportMocktailRelease(const mocktail::update::UpdatePaths& paths,
   const mocktail::update::UpdateNotice notice =
       mocktail::update::ComposeUpdateNotice(MOCKTAIL_PROJECT_VERSION,
                                             check.latest, roblox, install);
-  // A failed install is shown every time: without a runnable payload the
-  // notice is the only explanation the failure dialog can give.
   if (notice.empty() || (updated && notice.key == check.notified_key)) return;
 
   EmitNoticeText("notice-heading", notice.heading);
@@ -517,8 +509,7 @@ int main(int argc, char** argv) {
   for (const std::string& warning : updated.warnings) {
     std::cerr << "[native-updater] warning: " << warning << '\n';
   }
-  // Before the outcome line: the launcher reports the last plain line as the
-  // failure, and a failed Roblox install is exactly when this notice matters.
+  // Must run before the outcome line, which the launcher reads as the failure.
   if (request.startup_preflight) ReportMocktailRelease(paths, updated);
   if (!updated) {
     std::cerr << "[native-updater] " << updated.error << '\n';

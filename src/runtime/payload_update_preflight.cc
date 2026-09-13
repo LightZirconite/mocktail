@@ -283,8 +283,6 @@ class UpdaterStderrRelay final {
  private:
   // An Adwaita alert dialog stays readable well below the packet limit.
   static constexpr std::size_t kMaximumFailureBytes = 400;
-  // Notice fields travel to the dialog helper as arguments, which the helper
-  // launcher truncates at 2048 bytes each.
   static constexpr std::size_t kMaximumNoticeFieldBytes = 1024;
 
   static void CloseDescriptor(int* descriptor) {
@@ -331,7 +329,6 @@ class UpdaterStderrRelay final {
     field->assign(TrimToCharacterBoundary(combined, kMaximumNoticeFieldBytes));
   }
 
-  // Longest field names first: "notice-alternative" prefixes its command.
   bool RecordNoticeLine(std::string_view detail) {
     const std::pair<std::string_view, std::string*> fields[] = {
         {"notice-heading: ", &notice_.heading},

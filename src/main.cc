@@ -577,8 +577,6 @@ int main(int argc, char* argv[]) {
         std::string message =
             "Mocktail could not update or verify the Roblox installation.\n\n" +
             update_preflight.details;
-        // A Roblox version this Mocktail cannot run is the one failure the
-        // user can fix, and only by updating Mocktail.
         if (!update_notice.empty()) {
           message += "\n\n" + update_notice.body;
           if (!update_notice.command.empty()) {
