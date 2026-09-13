@@ -9,12 +9,25 @@
 namespace mocktail {
 namespace runtime {
 
+// A newer Mocktail release, or a Roblox version only a newer Mocktail can run,
+// as reported by the updater. The updater shows each situation once.
+struct MocktailUpdateNotice {
+  std::string heading;
+  std::string body;
+  std::string command;
+  std::string alternative;
+  std::string alternative_command;
+
+  bool empty() const { return heading.empty() && body.empty(); }
+};
+
 struct PayloadUpdatePreflightResult {
   bool attempted = false;
   std::string error;
   // Last failure the updater reported on its own stderr. Empty when the
   // updater never ran or never explained itself.
   std::string details;
+  MocktailUpdateNotice notice;
 
   explicit operator bool() const { return error.empty(); }
 };

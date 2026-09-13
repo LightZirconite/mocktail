@@ -26,6 +26,10 @@ struct CompatibilityCatalogResult {
 CompatibilityCatalogResult LoadCompatibilityCatalog(
     const std::filesystem::path& path);
 
+// Same validation as the loader, for a catalog that did not come from disk
+// (the one published with a newer Mocktail release).
+CompatibilityCatalogResult ParseCompatibilityCatalog(std::string_view contents);
+
 std::optional<SupportedPayloadProfile> PreferredSupportedProfile(
     const std::vector<SupportedPayloadProfile>& profiles);
 

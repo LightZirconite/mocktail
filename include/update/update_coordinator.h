@@ -1,6 +1,7 @@
 #ifndef MOCKTAIL_UPDATE_UPDATE_COORDINATOR_H_
 #define MOCKTAIL_UPDATE_UPDATE_COORDINATOR_H_
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -46,6 +47,16 @@ struct UpdateResult {
   // active. Launching still works, but the Roblox servers reject an outdated
   // client, so this is a user-visible outcome rather than a quiet success.
   bool stale = false;
+  // Provider latest, when it could be consulted.
+  std::string latest_version_name;
+  std::uint64_t latest_version_code = 0;
+  // The provider latest failed compatibility derivation or probation with
+  // this runtime. Unlike a failed download this does not resolve on its own:
+  // only a newer Mocktail can run that Roblox version.
+  bool latest_rejected = false;
+  // Payload that is runnable after this update, when there is one.
+  std::string active_version_name;
+  std::uint64_t active_version_code = 0;
   std::string payload_id;
   std::string message;
   std::vector<std::string> warnings;

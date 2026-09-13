@@ -10,6 +10,9 @@ namespace mocktail::update {
 struct UpdateConfig {
   bool automatic = true;
   bool launch_after_update = false;
+  // Look up newer Mocktail releases on GitHub and say how to install them.
+  // Mocktail never replaces its own files either way.
+  bool mocktail_release_check = true;
   std::string source = "apk-pure";
 };
 

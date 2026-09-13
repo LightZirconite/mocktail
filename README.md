@@ -102,6 +102,36 @@ Direct AppImage, DEB, and RPM downloads are available from the
 
 </details>
 
+## Updates
+
+Roblox and Mocktail are updated separately.
+
+- **Roblox**: at every launch, Mocktail checks the latest `x86_64` Roblox
+  APK, verifies its signature, and switches to it only after it passes a
+  compatibility check. Otherwise the previous working copy stays active.
+- **Mocktail** is updated by whatever installed it: Flatpak or your software
+  center, your AUR helper, APT, DNF, or a new AppImage. Mocktail never
+  replaces its own files. At most every 12 hours it asks GitHub
+  (`api.github.com` and `raw.githubusercontent.com`) for the latest release.
+  If a newer release exists, or a new Roblox version failed the
+  compatibility check, Mocktail shows the update command for your
+  installation once.
+
+A new Roblox version sometimes needs a new Mocktail release. If Mocktail says
+a Roblox version did not pass its compatibility check, update Mocktail.
+
+To see what Mocktail knows about your installation:
+
+```bash
+/usr/lib/mocktail/mocktail_updater release-status --refresh
+# Flatpak:
+flatpak run --command=/app/lib/mocktail/mocktail_updater \
+  space.bigrat.mocktail release-status --refresh
+```
+
+Set `updates.mocktail_release_check: false` in
+`~/.config/mocktail/config.yaml` to turn off the release check.
+
 ## FFlag overrides
 
 Put a JSON object in `$XDG_CONFIG_HOME/mocktail/fflags.json` (usually

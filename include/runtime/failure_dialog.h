@@ -15,6 +15,13 @@ bool ShowFailureDialog(const Environment& environment,
                        std::string_view message);
 bool ShowWarningDialog(const Environment& environment,
                        std::string_view message);
+// Blocks until dismissed. Commands are shown as selectable text; an empty
+// field is omitted.
+bool ShowUpdateNoticeDialog(const Environment& environment,
+                            std::string_view heading, std::string_view body,
+                            std::string_view command,
+                            std::string_view alternative,
+                            std::string_view alternative_command);
 
 // The helper starts before guest threads, so it can report errors and fatal
 // exits even when the main process can no longer show a dialog.
