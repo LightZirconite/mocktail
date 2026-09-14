@@ -283,6 +283,7 @@ add_library(mocktail_runtime STATIC
   src/runtime/environment.cc
   src/runtime/external_launch_broker.cc
   src/runtime/frame_rate_policy.cc
+  src/runtime/fleasion.cc
   src/runtime/game_mode.cc
   src/runtime/game_session_coordinator.cc
   src/runtime/graphics_launch_policy.cc
@@ -301,6 +302,8 @@ add_library(mocktail_runtime STATIC
   src/runtime/roblox_web_view_bridge.cc
   src/runtime/roblox_permissions_bridge.cc
   src/runtime/payload_update_preflight.cc
+  src/runtime/process_launch_policy.cc
+  src/runtime/process_diagnostics.cc
   src/runtime/runtime_config.cc
   src/runtime/runtime_config_bootstrap.cc
   src/runtime/runtime_config_file.cc
@@ -342,6 +345,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
 endif()
 target_link_libraries(mocktail_runtime PUBLIC Threads::Threads)
 target_link_libraries(mocktail_runtime PRIVATE
+  OpenSSL::Crypto
   CURL::libcurl
   nlohmann_json::nlohmann_json
   PkgConfig::GIO

@@ -4,7 +4,6 @@
 #include <unistd.h>
 
 #include <filesystem>
-#include <fstream>
 #include <map>
 #include <string>
 #include <vector>
@@ -34,11 +33,6 @@ class TemporaryDirectory final {
  private:
   std::filesystem::path root_;
 };
-
-void WriteFile(const std::filesystem::path& path, const std::string& text) {
-  std::filesystem::create_directories(path.parent_path());
-  std::ofstream(path) << text;
-}
 
 std::string ReleaseDocument(const std::string& tag,
                             const std::string& url = kReleaseUrl,
