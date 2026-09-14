@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "update/http_download.h"
-#include "update/install_method.h"
 
 namespace mocktail::update {
 
@@ -70,6 +69,7 @@ struct MocktailReleaseCheck {
 MocktailReleaseCheck CheckMocktailRelease(
     const MocktailReleaseCheckOptions& options);
 
+std::string ReadNotifiedKey(const std::filesystem::path& state_file);
 bool RecordNotifiedKey(const std::filesystem::path& state_file,
                        std::string_view key, std::string* error);
 
@@ -86,16 +86,14 @@ struct UpdateNotice {
   std::string heading;
   std::string body;
   std::string command;
-  std::string alternative;
-  std::string alternative_command;
 
   bool empty() const { return key.empty(); }
 };
 
+// `latest` is empty when this build does not check for releases.
 UpdateNotice ComposeUpdateNotice(std::string_view installed_version,
                                  const std::optional<MocktailRelease>& latest,
-                                 const RobloxUpdateState& roblox,
-                                 const InstallMethod& install);
+                                 const RobloxUpdateState& roblox);
 
 }  // namespace mocktail::update
 

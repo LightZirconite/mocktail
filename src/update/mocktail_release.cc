@@ -390,6 +390,10 @@ MocktailReleaseCheck CheckMocktailRelease(
   return check;
 }
 
+std::string ReadNotifiedKey(const std::filesystem::path& state_file) {
+  return LoadState(state_file).notified_key;
+}
+
 bool RecordNotifiedKey(const std::filesystem::path& state_file,
                        std::string_view key, std::string* error) {
   PersistedState state = LoadState(state_file);
@@ -399,8 +403,7 @@ bool RecordNotifiedKey(const std::filesystem::path& state_file,
 
 UpdateNotice ComposeUpdateNotice(std::string_view installed_version,
                                  const std::optional<MocktailRelease>& latest,
-                                 const RobloxUpdateState& roblox,
-                                 const InstallMethod& install) {
+                                 const RobloxUpdateState& roblox) {
   UpdateNotice notice;
   const std::optional<ReleaseVersion> installed =
       ParseReleaseVersion(installed_version);
@@ -447,10 +450,8 @@ UpdateNotice ComposeUpdateNotice(std::string_view installed_version,
                     mocktail + " is installed).";
       if (roblox_blocked) notice.body += "\n\n" + blocked_sentence;
     }
-    notice.body += "\n\n" + install.update_instructions;
-    notice.command = install.update_command;
-    notice.alternative = install.alternative;
-    notice.alternative_command = install.alternative_command;
+    notice.body += "\n\nDownload it from GitHub:";
+    notice.command = latest->url;
     return notice;
   }
 
@@ -460,11 +461,11 @@ UpdateNotice ComposeUpdateNotice(std::string_view installed_version,
   notice.body = blocked_sentence +
                 "\n\nA newer Mocktail release usually adds support for new "
                 "Roblox versions.";
-  if (!latest.has_value()) {
-    notice.body += " Mocktail could not check for one right now.";
-  } else {
+  if (latest.has_value()) {
     notice.body += " None is published yet (latest: " + latest->version +
                    ").";
+  } else {
+    notice.body += " Update Mocktail the same way you installed it.";
   }
   return notice;
 }

@@ -17,7 +17,6 @@
 #include "update/apkpure_provider.h"
 #include "update/compatibility_catalog.h"
 #include "update/host_abi_deriver.h"
-#include "update/install_method.h"
 #include "update/mocktail_release.h"
 #include "update/payload_store.h"
 #include "update/update_config.h"
@@ -36,6 +35,10 @@
 
 #ifndef MOCKTAIL_PROJECT_VERSION
 #define MOCKTAIL_PROJECT_VERSION "unknown"
+#endif
+
+#ifndef MOCKTAIL_RELEASE_CHECK
+#define MOCKTAIL_RELEASE_CHECK 0
 #endif
 
 #ifndef MOCKTAIL_RELEASE_REPOSITORY
@@ -186,39 +189,32 @@ void Usage(std::ostream& output) {
             "  derive-host-abi OUTPUT REF_LIB REF_PROFILE CANDIDATE_DIR "
             "[REF_COMPAT...]\n"
             "  status\n"
-            "  release-status [--refresh]\n"
             "  rollback\n";
 }
 
-bool ReleaseCheckDisabled() {
-  const auto skip = Environment("MOCKTAIL_SKIP_MOCKTAIL_RELEASE_CHECK");
-  return (skip.has_value() && *skip != "0") ||
-         std::string_view(MOCKTAIL_RELEASE_REPOSITORY).empty();
-}
-
-std::string ProjectUrl() {
-  return "https://github.com/" + std::string(MOCKTAIL_RELEASE_REPOSITORY);
-}
-
-mocktail::update::MocktailReleaseCheck CheckRelease(
-    const mocktail::update::UpdatePaths& paths, bool force_refresh) {
+// Where a package manager or Flatpak delivers Mocktail, the release check is
+// compiled out and only the Roblox notice remains.
+std::optional<mocktail::update::MocktailRelease> LatestRelease(
+    const mocktail::update::UpdatePaths& paths) {
+#if MOCKTAIL_RELEASE_CHECK
+  const mocktail::update::UpdateConfigResult configured =
+      mocktail::update::LoadUpdateConfig(paths.config_file);
+  if (!configured || !configured.config.mocktail_release_check) return {};
   mocktail::update::MocktailReleaseCheckOptions options;
   options.repository = MOCKTAIL_RELEASE_REPOSITORY;
   options.state_file = paths.state_root / "mocktail-release.json";
   options.now = std::time(nullptr);
-  options.force_refresh = force_refresh;
   options.fetch = mocktail::update::DownloadBytes;
-  return mocktail::update::CheckMocktailRelease(options);
-}
-
-mocktail::update::InstallMethod DescribeThisInstallation(
-    const std::optional<mocktail::update::MocktailRelease>& latest) {
-  const mocktail::update::InstallFacts facts =
-      mocktail::update::GatherInstallFacts(
-          "/", ExecutablePath(), Environment("APPIMAGE").value_or(""));
-  return mocktail::update::DescribeInstallMethod(
-      facts, ProjectUrl(),
-      latest.has_value() ? latest->url : ProjectUrl() + "/releases/latest");
+  const mocktail::update::MocktailReleaseCheck check =
+      mocktail::update::CheckMocktailRelease(options);
+  if (!check.error.empty()) {
+    std::cerr << "[native-updater] warning: " << check.error << '\n';
+  }
+  return check.latest;
+#else
+  (void)paths;
+  return {};
+#endif
 }
 
 void EmitNoticeText(std::string_view field, std::string_view text) {
@@ -234,20 +230,8 @@ void EmitNoticeText(std::string_view field, std::string_view text) {
   }
 }
 
-void ReportMocktailRelease(const mocktail::update::UpdatePaths& paths,
-                           const mocktail::update::UpdateResult& updated) {
-  if (ReleaseCheckDisabled()) return;
-  const mocktail::update::UpdateConfigResult configured =
-      mocktail::update::LoadUpdateConfig(paths.config_file);
-  if (!configured || !configured.config.mocktail_release_check) return;
-
-  const mocktail::update::MocktailReleaseCheck check =
-      CheckRelease(paths, false);
-  if (!check.error.empty()) {
-    std::cerr << "[native-updater] warning: " << check.error << '\n';
-  }
-  const mocktail::update::InstallMethod install =
-      DescribeThisInstallation(check.latest);
+void ReportMocktailUpdate(const mocktail::update::UpdatePaths& paths,
+                          const mocktail::update::UpdateResult& updated) {
   mocktail::update::RobloxUpdateState roblox;
   roblox.active_version_name = updated.active_version_name;
   roblox.active_version_code = updated.active_version_code;
@@ -256,72 +240,23 @@ void ReportMocktailRelease(const mocktail::update::UpdatePaths& paths,
   roblox.latest_rejected = updated.latest_rejected;
   const mocktail::update::UpdateNotice notice =
       mocktail::update::ComposeUpdateNotice(MOCKTAIL_PROJECT_VERSION,
-                                            check.latest, roblox, install);
-  if (notice.empty() || (updated && notice.key == check.notified_key)) return;
-
+                                            LatestRelease(paths), roblox);
+  const std::filesystem::path state_file =
+      paths.state_root / "mocktail-release.json";
+  if (notice.empty() ||
+      (updated && notice.key == mocktail::update::ReadNotifiedKey(state_file))) {
+    return;
+  }
   EmitNoticeText("notice-heading", notice.heading);
   EmitNoticeText("notice", notice.body);
   if (!notice.command.empty()) {
     EmitNoticeText("notice-command", notice.command);
   }
-  if (!notice.alternative.empty()) {
-    EmitNoticeText("notice-alternative", notice.alternative);
-    if (!notice.alternative_command.empty()) {
-      EmitNoticeText("notice-alternative-command", notice.alternative_command);
-    }
-  }
   std::string error;
-  if (!mocktail::update::RecordNotifiedKey(
-          paths.state_root / "mocktail-release.json", notice.key, &error)) {
+  if (!mocktail::update::RecordNotifiedKey(state_file, notice.key, &error)) {
     std::cerr << "[native-updater] warning: " << error << '\n';
   }
 }
-
-int PrintReleaseStatus(const mocktail::update::UpdatePaths& paths,
-                       bool refresh) {
-  std::cout << "installed Mocktail: " << MOCKTAIL_PROJECT_VERSION << '\n';
-  std::optional<mocktail::update::MocktailRelease> latest;
-  if (ReleaseCheckDisabled()) {
-    std::cout << "latest Mocktail: release check disabled for this build\n";
-  } else {
-    const mocktail::update::MocktailReleaseCheck check =
-        CheckRelease(paths, refresh);
-    latest = check.latest;
-    if (latest.has_value()) {
-      std::cout << "latest Mocktail: " << latest->version << " ("
-                << latest->url << ")"
-                << (check.refreshed ? "" : " [cached]") << '\n';
-      if (latest->catalog_known) {
-        std::cout << "latest release supports Roblox version codes:";
-        for (const std::uint64_t code : latest->supported_roblox_codes) {
-          std::cout << ' ' << code;
-        }
-        std::cout << '\n';
-      }
-    } else {
-      std::cout << "latest Mocktail: unknown\n";
-    }
-    if (!check.error.empty()) {
-      std::cout << "release check error: " << check.error << '\n';
-    }
-  }
-  const mocktail::update::InstallMethod install =
-      DescribeThisInstallation(latest);
-  std::cout << "installation: " << install.description << " ["
-            << mocktail::update::InstallChannelName(install.channel) << "]\n"
-            << "how to update: " << install.update_instructions << '\n';
-  if (!install.update_command.empty()) {
-    std::cout << "  " << install.update_command << '\n';
-  }
-  if (!install.alternative.empty()) {
-    std::cout << "alternative: " << install.alternative << '\n';
-    if (!install.alternative_command.empty()) {
-      std::cout << "  " << install.alternative_command << '\n';
-    }
-  }
-  return 0;
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -354,12 +289,6 @@ int main(int argc, char** argv) {
     }
     std::cout << status;
     return 0;
-  }
-  if (command == "release-status") {
-    if (argc > 3 || (argc == 3 && std::string_view(argv[2]) != "--refresh")) {
-      return 2;
-    }
-    return PrintReleaseStatus(paths, argc == 3);
   }
   if (command == "verify-current") {
     if (argc != 2) return 2;
@@ -510,7 +439,7 @@ int main(int argc, char** argv) {
     std::cerr << "[native-updater] warning: " << warning << '\n';
   }
   // Must run before the outcome line, which the launcher reads as the failure.
-  if (request.startup_preflight) ReportMocktailRelease(paths, updated);
+  if (request.startup_preflight) ReportMocktailUpdate(paths, updated);
   if (!updated) {
     std::cerr << "[native-updater] " << updated.error << '\n';
     return 1;

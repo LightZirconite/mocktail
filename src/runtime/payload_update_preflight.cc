@@ -332,8 +332,6 @@ class UpdaterStderrRelay final {
   bool RecordNoticeLine(std::string_view detail) {
     const std::pair<std::string_view, std::string*> fields[] = {
         {"notice-heading: ", &notice_.heading},
-        {"notice-alternative-command: ", &notice_.alternative_command},
-        {"notice-alternative: ", &notice_.alternative},
         {"notice-command: ", &notice_.command},
         {"notice: ", &notice_.body},
     };

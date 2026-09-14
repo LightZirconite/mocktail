@@ -9,13 +9,10 @@
 #include <string>
 #include <vector>
 
-#include "update/install_method.h"
-
 namespace mocktail::update {
 namespace {
 
 constexpr char kRepository[] = "komaruworld/mocktail";
-constexpr char kProject[] = "https://github.com/komaruworld/mocktail";
 constexpr char kReleaseUrl[] =
     "https://github.com/komaruworld/mocktail/releases/tag/1.0.5";
 
@@ -268,147 +265,6 @@ TEST(MocktailReleaseTest, RemembersTheLastNoticeAndForgetsOtherRepositories) {
   EXPECT_TRUE(other.notified_key.empty());
 }
 
-InstallMethod Describe(const std::filesystem::path& root,
-                       const std::filesystem::path& executable,
-                       const std::string& appimage = "") {
-  return DescribeInstallMethod(GatherInstallFacts(root, executable, appimage),
-                               kProject, kReleaseUrl);
-}
-
-TEST(InstallMethodTest, FlatpakPointsAtFlatpakAndNativeArchPackage) {
-  TemporaryDirectory temporary;
-  WriteFile(temporary.root() / ".flatpak-info",
-            "[Application]\nname=space.bigrat.mocktail\nruntime=runtime/x\n"
-            "\n[Instance]\nbranch=stable\n");
-  WriteFile(temporary.root() / "run/host/os-release",
-            "NAME=\"CachyOS Linux\"\nPRETTY_NAME=\"CachyOS\"\nID=cachyos\n"
-            "ID_LIKE=arch\n");
-
-  const InstallMethod method =
-      Describe(temporary.root(), "/app/lib/mocktail/mocktail_updater");
-
-  EXPECT_EQ(method.channel, InstallChannel::kFlatpak);
-  EXPECT_EQ(method.update_command, "flatpak update space.bigrat.mocktail");
-  EXPECT_NE(method.alternative.find("mocktail-bin"), std::string::npos);
-  EXPECT_NE(method.alternative_command.find("paru -S mocktail-bin"),
-            std::string::npos);
-}
-
-TEST(InstallMethodTest, ImageBasedHostsKeepTheFlatpak) {
-  for (const char* os_release :
-       {"ID=steamos\nID_LIKE=arch\n",
-        "ID=fedora\nVERSION_ID=44\nVARIANT_ID=silverblue\n",
-        "ID=bazzite\nID_LIKE=\"fedora\"\nVERSION_ID=44\n"}) {
-    TemporaryDirectory temporary;
-    WriteFile(temporary.root() / ".flatpak-info",
-              "[Application]\nname=space.bigrat.mocktail\n");
-    WriteFile(temporary.root() / "run/host/os-release", os_release);
-    const InstallMethod method =
-        Describe(temporary.root(), "/app/lib/mocktail/mocktail_updater");
-    EXPECT_EQ(method.channel, InstallChannel::kFlatpak) << os_release;
-    EXPECT_TRUE(method.alternative.empty()) << os_release;
-  }
-}
-
-TEST(InstallMethodTest, FlatpakOnFedoraAndUbuntuNamesTheirRepositories) {
-  TemporaryDirectory fedora;
-  WriteFile(fedora.root() / ".flatpak-info", "[Application]\nname=x\n");
-  WriteFile(fedora.root() / "run/host/os-release", "ID=fedora\nVERSION_ID=44\n");
-  EXPECT_NE(Describe(fedora.root(), "/app/bin/mocktail_updater")
-                .alternative_command.find("dnf install mocktail"),
-            std::string::npos);
-
-  TemporaryDirectory old_ubuntu;
-  WriteFile(old_ubuntu.root() / ".flatpak-info", "[Application]\nname=x\n");
-  WriteFile(old_ubuntu.root() / "run/host/os-release",
-            "ID=ubuntu\nVERSION_ID=\"24.04\"\n");
-  EXPECT_TRUE(
-      Describe(old_ubuntu.root(), "/app/bin/mocktail_updater").alternative.empty());
-
-  TemporaryDirectory ubuntu;
-  WriteFile(ubuntu.root() / ".flatpak-info", "[Application]\nname=x\n");
-  WriteFile(ubuntu.root() / "run/host/os-release",
-            "ID=ubuntu\nVERSION_ID=\"26.04\"\n");
-  EXPECT_EQ(Describe(ubuntu.root(), "/app/bin/mocktail_updater")
-                .alternative_command,
-            std::string(kProject) + "#install-with-apt");
-}
-
-TEST(InstallMethodTest, AurPackagesUseTheAurHelper) {
-  TemporaryDirectory temporary;
-  std::filesystem::create_directories(temporary.root() /
-                                      "var/lib/pacman/local/mocktail-1.0.4-1");
-  std::filesystem::create_directories(temporary.root() /
-                                      "var/lib/pacman/local/mesa-1:26.1-1");
-
-  const InstallMethod source =
-      Describe(temporary.root(), "/usr/lib/mocktail/mocktail_updater");
-  EXPECT_EQ(source.channel, InstallChannel::kPacman);
-  EXPECT_EQ(source.package, "mocktail");
-  EXPECT_EQ(source.update_command, "paru -Syu");
-  EXPECT_EQ(source.alternative_command, "paru -S mocktail-bin");
-
-  TemporaryDirectory git;
-  std::filesystem::create_directories(
-      git.root() / "var/lib/pacman/local/mocktail-git-1.0.4.r3.gabc-1");
-  const InstallMethod development =
-      Describe(git.root(), "/usr/lib/mocktail/mocktail_updater");
-  EXPECT_EQ(development.package, "mocktail-git");
-  EXPECT_EQ(development.update_command, "paru -Syu --devel");
-  EXPECT_TRUE(development.alternative.empty());
-}
-
-TEST(InstallMethodTest, DebianAndRpmPackagesFollowTheirRepository) {
-  TemporaryDirectory apt;
-  WriteFile(apt.root() / "var/lib/dpkg/info/mocktail-nightly:amd64.list", "");
-  WriteFile(apt.root() / "etc/apt/sources.list.d/mocktail.list", "deb x\n");
-  const InstallMethod debian =
-      Describe(apt.root(), "/usr/lib/mocktail/mocktail_updater");
-  EXPECT_EQ(debian.channel, InstallChannel::kDpkg);
-  EXPECT_EQ(debian.package, "mocktail-nightly");
-  EXPECT_EQ(debian.update_command,
-            "sudo apt update && sudo apt install --only-upgrade "
-            "mocktail-nightly");
-
-  TemporaryDirectory rpm;
-  std::filesystem::create_directories(rpm.root() / "usr/lib/sysimage/rpm");
-  const InstallMethod downloaded =
-      Describe(rpm.root(), "/usr/lib/mocktail/mocktail_updater");
-  EXPECT_EQ(downloaded.channel, InstallChannel::kRpm);
-  EXPECT_EQ(downloaded.update_command, kReleaseUrl);
-}
-
-TEST(InstallMethodTest, AppImageNixAndSourceBuilds) {
-  TemporaryDirectory temporary;
-  EXPECT_EQ(Describe(temporary.root(), "/tmp/.mount_x/bin/mocktail_updater",
-                     "/home/user/Mocktail.AppImage")
-                .channel,
-            InstallChannel::kAppImage);
-  EXPECT_EQ(Describe(temporary.root(),
-                     "/nix/store/abc-mocktail/bin/mocktail_updater")
-                .channel,
-            InstallChannel::kNix);
-
-  const std::filesystem::path build = temporary.root() / "checkout/build";
-  WriteFile(build / "CMakeCache.txt", "");
-  const InstallMethod source = Describe(temporary.root(), build / "updater");
-  EXPECT_EQ(source.channel, InstallChannel::kSourceBuild);
-  EXPECT_NE(source.update_command.find("make build"), std::string::npos);
-
-  const InstallMethod unknown =
-      Describe(temporary.root(), temporary.root() / "portable/bin/updater");
-  EXPECT_EQ(unknown.channel, InstallChannel::kUnknown);
-  EXPECT_EQ(unknown.update_command, kReleaseUrl);
-}
-
-InstallMethod FlatpakInstall() {
-  InstallMethod install;
-  install.channel = InstallChannel::kFlatpak;
-  install.update_instructions = "Use your software center, or run:";
-  install.update_command = "flatpak update space.bigrat.mocktail";
-  return install;
-}
-
 MocktailRelease Release(const std::string& version,
                         std::vector<std::uint64_t> codes = {}) {
   MocktailRelease release;
@@ -431,37 +287,33 @@ RobloxUpdateState RejectedRoblox() {
 }
 
 TEST(UpdateNoticeTest, NothingToSayWhenCurrent) {
-  EXPECT_TRUE(ComposeUpdateNotice("1.0.4", Release("1.0.4"), {},
-                                  FlatpakInstall())
+  EXPECT_TRUE(ComposeUpdateNotice("1.0.4", Release("1.0.4"), {})
                   .empty());
   EXPECT_TRUE(
-      ComposeUpdateNotice("1.0.4", std::nullopt, {}, FlatpakInstall()).empty());
-  EXPECT_TRUE(ComposeUpdateNotice("1.0.5", Release("1.0.4"), {},
-                                  FlatpakInstall())
+      ComposeUpdateNotice("1.0.4", std::nullopt, {}).empty());
+  EXPECT_TRUE(ComposeUpdateNotice("1.0.5", Release("1.0.4"), {})
                   .empty());
   RobloxUpdateState downloading = RejectedRoblox();
   downloading.latest_rejected = false;
-  EXPECT_TRUE(ComposeUpdateNotice("1.0.4", Release("1.0.4"), downloading,
-                                  FlatpakInstall())
+  EXPECT_TRUE(ComposeUpdateNotice("1.0.4", Release("1.0.4"), downloading)
                   .empty());
 }
 
-TEST(UpdateNoticeTest, NamesTheNewReleaseAndTheInstallCommand) {
+TEST(UpdateNoticeTest, PointsAtTheNewRelease) {
   const UpdateNotice notice = ComposeUpdateNotice(
-      "1.0.4", Release("1.0.5"), {}, FlatpakInstall());
+      "1.0.4", Release("1.0.5"), {});
   EXPECT_EQ(notice.key, "release:1.0.5");
   EXPECT_EQ(notice.heading, "Mocktail update available");
   EXPECT_NE(notice.body.find("Mocktail 1.0.5 is available"),
             std::string::npos);
   EXPECT_NE(notice.body.find("Mocktail 1.0.4 is installed"),
             std::string::npos);
-  EXPECT_EQ(notice.command, "flatpak update space.bigrat.mocktail");
+  EXPECT_EQ(notice.command, kReleaseUrl);
 }
 
 TEST(UpdateNoticeTest, ExplainsThatTheNewReleaseRunsTheRejectedRoblox) {
   const UpdateNotice notice = ComposeUpdateNotice(
-      "1.0.4", Release("1.0.5", {2998, 3092}), RejectedRoblox(),
-      FlatpakInstall());
+      "1.0.4", Release("1.0.5", {2998, 3092}), RejectedRoblox());
   EXPECT_EQ(notice.key, "release:1.0.5:roblox:3092");
   EXPECT_EQ(notice.heading, "Update Mocktail for new Roblox");
   EXPECT_NE(notice.body.find("Roblox 2.738.100 is out, but it did not pass "
@@ -470,12 +322,12 @@ TEST(UpdateNoticeTest, ExplainsThatTheNewReleaseRunsTheRejectedRoblox) {
             std::string::npos);
   EXPECT_NE(notice.body.find("Mocktail 1.0.5 supports Roblox 2.738.100"),
             std::string::npos);
-  EXPECT_EQ(notice.command, "flatpak update space.bigrat.mocktail");
+  EXPECT_EQ(notice.command, kReleaseUrl);
 }
 
 TEST(UpdateNoticeTest, DoesNotPromiseSupportTheReleaseDoesNotList) {
   const UpdateNotice notice = ComposeUpdateNotice(
-      "1.0.4", Release("1.0.5", {2998}), RejectedRoblox(), FlatpakInstall());
+      "1.0.4", Release("1.0.5", {2998}), RejectedRoblox());
   EXPECT_EQ(notice.heading, "Mocktail update available");
   EXPECT_EQ(notice.body.find("supports Roblox 2.738.100"), std::string::npos);
   EXPECT_NE(notice.body.find("did not pass"), std::string::npos);
@@ -483,10 +335,9 @@ TEST(UpdateNoticeTest, DoesNotPromiseSupportTheReleaseDoesNotList) {
 
 TEST(UpdateNoticeTest, WarnsOnceWhenNoReleaseRunsTheNewRoblox) {
   const UpdateNotice notice = ComposeUpdateNotice(
-      "1.0.4", Release("1.0.4", {2998}), RejectedRoblox(), FlatpakInstall());
+      "1.0.4", Release("1.0.4", {2998}), RejectedRoblox());
   EXPECT_EQ(notice.key, "roblox:3092:mocktail:1.0.4");
-  EXPECT_NE(ComposeUpdateNotice("1.0.5", Release("1.0.5"), RejectedRoblox(),
-                                FlatpakInstall())
+  EXPECT_NE(ComposeUpdateNotice("1.0.5", Release("1.0.5"), RejectedRoblox())
                 .key,
             notice.key);
   EXPECT_EQ(notice.heading, "Roblox update pending");
@@ -494,10 +345,15 @@ TEST(UpdateNoticeTest, WarnsOnceWhenNoReleaseRunsTheNewRoblox) {
             std::string::npos);
   EXPECT_TRUE(notice.command.empty());
 
+  const UpdateNotice packaged =
+      ComposeUpdateNotice("1.0.4", std::nullopt, RejectedRoblox());
+  EXPECT_EQ(packaged.heading, "Roblox update pending");
+  EXPECT_NE(packaged.body.find("same way you installed it"), std::string::npos);
+  EXPECT_TRUE(packaged.command.empty());
+
   RobloxUpdateState caught_up = RejectedRoblox();
   caught_up.active_version_code = 3092;
-  EXPECT_TRUE(ComposeUpdateNotice("1.0.4", Release("1.0.4"), caught_up,
-                                  FlatpakInstall())
+  EXPECT_TRUE(ComposeUpdateNotice("1.0.4", Release("1.0.4"), caught_up)
                   .empty());
 }
 

@@ -92,11 +92,6 @@ window.dialog-window.alert {
   background: #2a2b2f;
   color: #ffffff;
 }
-
-.alert .mocktail-notice-alternative {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 13px;
-}
 )css";
 
 constexpr char kProgressStyle[] = R"css(
@@ -233,29 +228,24 @@ std::string ValidOptionalText(std::string_view text) {
   return std::string(text);
 }
 
-GtkWidget* NoticeLabel(const std::string& text, const char* css_class,
-                       bool selectable) {
+GtkWidget* NoticeLabel(const std::string& text) {
   GtkWidget* label = gtk_label_new(text.c_str());
   gtk_label_set_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_wrap_mode(GTK_LABEL(label), PANGO_WRAP_WORD_CHAR);
   gtk_label_set_xalign(GTK_LABEL(label), 0.0F);
-  gtk_label_set_selectable(GTK_LABEL(label), selectable);
-  gtk_widget_add_css_class(label, css_class);
+  gtk_label_set_selectable(GTK_LABEL(label), TRUE);
+  gtk_widget_add_css_class(label, "mocktail-notice-command");
   return label;
 }
 
 int ShowUpdateNotice(std::string_view heading, std::string_view body,
-                     std::string_view command, std::string_view alternative,
-                     std::string_view alternative_command) {
+                     std::string_view command) {
   if (!InitializeUi(UiStyle::kDialog)) {
     return EXIT_FAILURE;
   }
   const std::string valid_heading = ValidOptionalText(heading);
   const std::string valid_body = ValidOptionalText(body);
   const std::string valid_command = ValidOptionalText(command);
-  const std::string valid_alternative = ValidOptionalText(alternative);
-  const std::string valid_alternative_command =
-      ValidOptionalText(alternative_command);
   if (valid_heading.empty() && valid_body.empty()) {
     return EXIT_FAILURE;
   }
@@ -268,29 +258,8 @@ int ShowUpdateNotice(std::string_view heading, std::string_view body,
   adw_dialog_set_content_width(dialog, 440);
   AdwAlertDialog* alert = ADW_ALERT_DIALOG(dialog);
 
-  GtkWidget* extra = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-  bool has_extra = false;
   if (!valid_command.empty()) {
-    gtk_box_append(GTK_BOX(extra), NoticeLabel(valid_command,
-                                               "mocktail-notice-command", true));
-    has_extra = true;
-  }
-  if (!valid_alternative.empty()) {
-    gtk_box_append(GTK_BOX(extra),
-                   NoticeLabel(valid_alternative,
-                               "mocktail-notice-alternative", false));
-    if (!valid_alternative_command.empty()) {
-      gtk_box_append(GTK_BOX(extra),
-                     NoticeLabel(valid_alternative_command,
-                                 "mocktail-notice-command", true));
-    }
-    has_extra = true;
-  }
-  if (has_extra) {
-    adw_alert_dialog_set_extra_child(alert, extra);
-  } else {
-    g_object_ref_sink(extra);
-    g_object_unref(extra);
+    adw_alert_dialog_set_extra_child(alert, NoticeLabel(valid_command));
   }
 
   adw_alert_dialog_add_response(alert, "close", "Continue");
@@ -463,8 +432,8 @@ int main(int argc, char* argv[]) {
   if (argc == 3 && std::string_view(argv[1]) == "--warning") {
     return ShowDialog(argv[2], "Signed out", "Continue");
   }
-  if (argc == 7 && std::string_view(argv[1]) == "--update-notice") {
-    return ShowUpdateNotice(argv[2], argv[3], argv[4], argv[5], argv[6]);
+  if (argc == 5 && std::string_view(argv[1]) == "--update-notice") {
+    return ShowUpdateNotice(argv[2], argv[3], argv[4]);
   }
   return EXIT_FAILURE;
 }

@@ -303,8 +303,6 @@ TEST(PayloadUpdatePreflightTest, CollectsMocktailUpdateNotice) {
       "[native-updater] notice: \n"
       "[native-updater] notice: Use your software center, or run:\n"
       "[native-updater] notice-command: flatpak update space.bigrat.mocktail\n"
-      "[native-updater] notice-alternative: Arch can use mocktail-bin.\n"
-      "[native-updater] notice-alternative-command: paru -S mocktail-bin\n"
       "[native-updater] kept Roblox 2.736.1408 (2998)");
   const MapEnvironment environment = NativeEnvironment();
   const RuntimePaths paths = RuntimePaths::FromEnvironment(environment);
@@ -314,8 +312,6 @@ TEST(PayloadUpdatePreflightTest, CollectsMocktailUpdateNotice) {
   EXPECT_EQ(result.notice.body,
             "Roblox 2.738 is out.\n\nUse your software center, or run:");
   EXPECT_EQ(result.notice.command, "flatpak update space.bigrat.mocktail");
-  EXPECT_EQ(result.notice.alternative, "Arch can use mocktail-bin.");
-  EXPECT_EQ(result.notice.alternative_command, "paru -S mocktail-bin");
 }
 
 TEST(PayloadUpdatePreflightTest, NoticeNeverReplacesTheFailureDetails) {

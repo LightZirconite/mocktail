@@ -206,17 +206,14 @@ bool ShowWarningDialog(const Environment& environment,
 
 bool ShowUpdateNoticeDialog(const Environment& environment,
                             std::string_view heading, std::string_view body,
-                            std::string_view command,
-                            std::string_view alternative,
-                            std::string_view alternative_command) {
+                            std::string_view command) {
   if (!FailureDialogsEnabled(environment)) {
     return false;
   }
   const std::filesystem::path helper = DialogHelper(environment);
   return !helper.empty() &&
          SpawnOneShot(helper, "--update-notice",
-                      {heading, body, command, alternative,
-                       alternative_command});
+                      {heading, body, command});
 }
 
 FailureDialogMonitor::FailureDialogMonitor(int socket, int helper_pid)

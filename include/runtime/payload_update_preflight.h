@@ -13,8 +13,6 @@ struct MocktailUpdateNotice {
   std::string heading;
   std::string body;
   std::string command;
-  std::string alternative;
-  std::string alternative_command;
 
   bool empty() const { return heading.empty() && body.empty(); }
 };

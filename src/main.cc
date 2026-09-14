@@ -592,8 +592,7 @@ int main(int argc, char* argv[]) {
     if (!update_notice.empty()) {
       (void)mocktail::runtime::ShowUpdateNoticeDialog(
           environment, update_notice.heading, update_notice.body,
-          update_notice.command, update_notice.alternative,
-          update_notice.alternative_command);
+          update_notice.command);
     }
     failure_dialog.SetMessage(
         "Mocktail could not finish starting Roblox because of an internal "

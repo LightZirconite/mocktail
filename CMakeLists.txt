@@ -60,12 +60,16 @@ set(MOCKTAIL_DEFAULT_SIGNING_TRUST_MANIFEST
   CACHE FILEPATH
   "Fallback signing trust manifest used outside an installed runtime"
 )
-set(MOCKTAIL_RELEASE_REPOSITORY "komaruworld/mocktail" CACHE STRING
-  "GitHub OWNER/REPO checked for newer Mocktail releases; empty disables it"
+option(MOCKTAIL_RELEASE_CHECK
+  "Check GitHub for newer Mocktail releases (builds not shipped by a package manager)"
+  OFF
 )
-if(NOT MOCKTAIL_RELEASE_REPOSITORY STREQUAL "" AND
+set(MOCKTAIL_RELEASE_REPOSITORY "komaruworld/mocktail" CACHE STRING
+  "GitHub OWNER/REPO used by MOCKTAIL_RELEASE_CHECK"
+)
+if(MOCKTAIL_RELEASE_CHECK AND
    NOT MOCKTAIL_RELEASE_REPOSITORY MATCHES "^[A-Za-z0-9_-]+/[A-Za-z0-9._-]+$")
-  message(FATAL_ERROR "MOCKTAIL_RELEASE_REPOSITORY must be empty or OWNER/REPO")
+  message(FATAL_ERROR "MOCKTAIL_RELEASE_REPOSITORY must be OWNER/REPO")
 endif()
 set(MOCKTAIL_DISCORD_APPLICATION_ID "1537088975720812655" CACHE STRING
   "Discord application ID baked into Mocktail Rich Presence releases"
@@ -223,7 +227,6 @@ add_library(mocktail_update STATIC
   src/update/compatibility_catalog.cc
   src/update/http_download.cc
   src/update/host_abi_deriver.cc
-  src/update/install_method.cc
   src/update/mocktail_release.cc
   src/update/payload_integrity.cc
   src/update/payload_store.cc
@@ -253,6 +256,7 @@ target_compile_definitions(mocktail_updater PRIVATE
   "MOCKTAIL_DEFAULT_COMPATIBILITY_MANIFEST=\"${MOCKTAIL_DEFAULT_COMPATIBILITY_MANIFEST}\""
   "MOCKTAIL_DEFAULT_SIGNING_TRUST_MANIFEST=\"${MOCKTAIL_DEFAULT_SIGNING_TRUST_MANIFEST}\""
   "MOCKTAIL_PROJECT_VERSION=\"${PROJECT_VERSION}\""
+  "MOCKTAIL_RELEASE_CHECK=$<BOOL:${MOCKTAIL_RELEASE_CHECK}>"
   "MOCKTAIL_RELEASE_REPOSITORY=\"${MOCKTAIL_RELEASE_REPOSITORY}\""
 )
 mocktail_apply_compile_options(mocktail_updater)
